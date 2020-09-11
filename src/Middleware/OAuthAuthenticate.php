@@ -15,6 +15,7 @@ use Closure;
 use http\Env\Request;
 use Illuminate\Support\Arr;
 use Overtrue\LaravelWeChat\Events\WeChatUserAuthorized;
+use function Couchbase\defaultDecoder;
 
 /**
  * Class OAuthAuthenticate: 微信公众号, 企业微信的网页应用。
@@ -50,7 +51,8 @@ class OAuthAuthenticate
 
         if (!$session) {
             if ($request->has('code')) {
-                session([$sessionKey => $officialAccount->oauth->user() ?? []]);
+                $code = $request->get('code');
+                session([$sessionKey => $officialAccount->oauth->userFromCode($code) ?? []]);
                 $isNewSession = true;
 
                 event(new WeChatUserAuthorized(session($sessionKey), $isNewSession, $account));
@@ -60,7 +62,8 @@ class OAuthAuthenticate
 
             session()->forget($sessionKey);
 
-            return $officialAccount->oauth->scopes($scope)->redirect($request->fullUrl());
+            $redirectUrl = $officialAccount->oauth->scopes($scope)->redirect($request->fullUrl());
+            return redirect()->to($redirectUrl);
         }
 
         event(new WeChatUserAuthorized(session($sessionKey), $isNewSession, $account));
